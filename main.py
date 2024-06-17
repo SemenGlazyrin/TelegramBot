@@ -5,7 +5,7 @@ from telebot.async_telebot import AsyncTeleBot
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 
-bot = AsyncTeleBot('')
+bot = AsyncTeleBot('7317266086:AAGLD4wYYy3N45il6XbBI3OeS_AWMZc-vwU')
 
 tracked_products = []
 previous_info = []
@@ -14,34 +14,26 @@ previous_info = []
 async def start(message):
     await bot.send_message(message.chat.id, "Выберите действие:",
                      reply_markup=types.ReplyKeyboardMarkup(resize_keyboard=True,one_time_keyboard=True).add(
-                            types.KeyboardButton("Настройки"),
+                            types.KeyboardButton("Частота проверки"),
                             types.KeyboardButton("Просмотреть статус товаров"),
                             types.KeyboardButton("Начинаем")
                      ))
 
-@bot.message_handler(regexp="Настройки")
+@bot.message_handler(regexp="Частота проверки")
 async def settings(message):
-    await bot.send_message(message.chat.id, "Настройки пока не доступны.")
+    await bot.send_message(message.chat.id, "Цены обновляются автоматически, когда пользователи делают похожий запрос ")
     await start(message)
 
 @bot.message_handler(regexp="Просмотреть статус товаров")
 async def show_products(message):
     global tracked_products
-    print(len(tracked_products))
 
-    for j in range(0, len(tracked_products)):
-        part1 = tracked_products[j][0]
-        part2 = tracked_products[j][1]
+    if len(tracked_products[1]) != 0:
+        for j in range(0, len(tracked_products[1])):
+            await bot.send_message(message.chat.id, "Отслеживаемые товары:\n" + tracked_products[1][j])
+    else:
+        await bot.send_message(message.chat.id, "У вас нет отслеживаемых товаров.")
 
-    # for i in range(0,len(tracked_products)):
-    #     t += tracked_products[i]
-
-        if len(part1) != 0:
-            await bot.send_message(message.chat.id, "Отслеживаемые товары:\n" + part1)
-            if len(part2) != 0:
-                await bot.send_message(message.chat.id, "Отслеживаемые товары:\n" + part2)
-        else:
-            await bot.send_message(message.chat.id, "У вас нет отслеживаемых товаров.")
     await start(message)
 
 @bot.message_handler(regexp="Начинаем")
@@ -81,7 +73,7 @@ async def get_product_info(message):
 
         price_string = price_string.replace("₽", "")
 
-        prices.append(price_string.replace(",", "."))
+        prices.append(float(price_string.replace(",", ".")))
 
     driver.quit()
 
@@ -89,15 +81,21 @@ async def get_product_info(message):
 
     return [product_names, prices, urls]
 
+async def check_other_price(message):
+    if message in tracked_products[0]:
+        tracked_products[1][tracked_products[0].index(message)] = get_product_info(message)
+
 async def text(info):
     t1 = ""
     t2 = ""
+    prices = []
 
     for i in range(0, len(info[0])):
         if i <= len(info[0]) // 2:
             t1 += info[0][i] + '\n' + str(info[1][i]) + " рублей" + '\n' + info[2][i] + "\n\n"
         else:
             t2 += info[0][i] + '\n' + str(info[1][i]) + " рублей" + '\n' + info[2][i] + "\n\n"
+
     return [t1,t2]
 
 async def find_product(message):
@@ -113,13 +111,13 @@ async def find_product(message):
         info = await get_product_info(message.text)
 
         mes = await text(info)
-        previous_info = mes
-        print(mes)
+
 
         if len(info[0]) != 0:
-            await bot.send_message(message.chat.id, mes[0])
-            if len(mes[1]) > 0:
-                await bot.send_message(message.chat.id, mes[1])
+            min_i = info[1].index(min(info[1]))
+            previous_info = [message, info[0][min_i] + '\n' + str(min(info[1])) + " рублей" + '\n' + info[2][min_i] + "\n\n"]
+
+            await bot.send_message(message.chat.id, "По вашему запросу, с минимальной ценой, нашелся: \n" + info[0][min_i] + '\n' + str(info[1][min_i]) + " рублей" + '\n' + info[2][min_i] + "\n\n")
 
             await bot.send_message(message.chat.id, "Желаете ли вы отслеживать данный товар?",
                          reply_markup=types.ReplyKeyboardMarkup(resize_keyboard=True,one_time_keyboard=True).add(
@@ -135,6 +133,7 @@ async def save_product(message):
     global previous_info
 
     if message.text == "Да":
+        print(previous_info)
         tracked_products.append(previous_info)
         await bot.send_message(message.chat.id, "Ваш товар был сохранен.")
     await start(message)
