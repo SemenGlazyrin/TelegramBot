@@ -5,7 +5,7 @@ from telebot.async_telebot import AsyncTeleBot
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 
-bot = AsyncTeleBot('7317266086:AAGLD4wYYy3N45il6XbBI3OeS_AWMZc-vwU')
+bot = AsyncTeleBot('')
 
 tracked_products = []
 previous_info = []
